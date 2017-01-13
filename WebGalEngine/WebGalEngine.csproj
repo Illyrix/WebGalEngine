@@ -88,6 +88,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EngineObject.cs" />
     <Compile Include="ContextMenu.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>

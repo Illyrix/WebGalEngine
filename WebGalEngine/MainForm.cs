@@ -15,6 +15,39 @@ namespace WebGalEngine
     public partial class MainForm : Form
     {
         public ChromiumWebBrowser chromeBrowser;
+        
+        private Size currentPanelSize;
+
+        public void resizePanel(int width, int height)
+        {
+            this.mainPanel.Size = new Size(width, height);
+        }
+
+        public void fullScreenDisplay()
+        {
+            this.currentPanelSize = new Size(this.mainPanel.ClientSize.Width, this.mainPanel.ClientSize.Height);
+
+            this.FormBorderStyle = FormBorderStyle.None;
+            //this.TopMost = true;
+            //Rectangle ret = Screen.GetWorkingArea(this);
+            //Rectangle ret = Screen.PrimaryScreen.Bounds;
+
+            //this.Size = new Size(ret.Width, ret.Height);
+            this.WindowState = FormWindowState.Maximized;
+            //this.mainPanel.ClientSize = new Size(ret.Width, ret.Height);
+            this.mainPanel.Dock = DockStyle.Fill;
+            //this.mainPanel.BringToFront();
+
+            this.BringToFront();
+        }
+
+        public void windowedDisplay()
+        {
+            this.mainPanel.ClientSize = this.currentPanelSize;
+            this.mainPanel.Dock = DockStyle.None;
+            this.WindowState = FormWindowState.Normal;
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+        }
 
         public void InitializeChromium()
         {
@@ -42,9 +75,14 @@ namespace WebGalEngine
 
         public MainForm()
         {
+            // TODO: 从配置文件load分辨率
+            currentPanelSize = new Size(1600, 900);
+
             InitializeComponent();
 
             InitializeChromium();
+            // Register an object in javascript named "EngineObject" with function of the EngineObject class
+            chromeBrowser.RegisterJsObject("EngineObject", new EngineObject(chromeBrowser, this));
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -54,7 +92,7 @@ namespace WebGalEngine
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-
+            System.Windows.Forms.Control.CheckForIllegalCrossThreadCalls = false;
         }
 
         private void mainPanel_Paint(object sender, PaintEventArgs e)
