@@ -22,11 +22,22 @@ namespace WebGalEngine
             // Initialize cef with the provided settings
             Cef.Initialize(settings);
             // Create a browser component
-            chromeBrowser = new ChromiumWebBrowser("https://www.baidu.com");
+
+            String page = string.Format(@"{0}\html\index.html", Application.StartupPath);
+            // Get current file page
+
+            chromeBrowser = new ChromiumWebBrowser(page);
             // Add it to the form and fill it to the form window.
             //this.Controls.Add(chromeBrowser);
             mainPanel.Controls.Add(chromeBrowser);
             chromeBrowser.Dock = DockStyle.Fill;
+
+            BrowserSettings browserSettings = new BrowserSettings();
+            browserSettings.FileAccessFromFileUrls = CefState.Enabled;
+            browserSettings.UniversalAccessFromFileUrls = CefState.Enabled;
+            chromeBrowser.BrowserSettings = browserSettings;
+
+            chromeBrowser.MenuHandler = new ContextMenu();
         }
 
         public MainForm()
