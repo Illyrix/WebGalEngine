@@ -20,23 +20,17 @@ namespace WebGalEngine
 
         public void resizePanel(int width, int height)
         {
-            this.mainPanel.Size = new Size(width, height);
+            this.mainPanel.ClientSize = this.currentPanelSize = new Size(width, height);
         }
 
         public void fullScreenDisplay()
         {
             this.currentPanelSize = new Size(this.mainPanel.ClientSize.Width, this.mainPanel.ClientSize.Height);
 
+            this.WindowState = FormWindowState.Normal;
             this.FormBorderStyle = FormBorderStyle.None;
-            //this.TopMost = true;
-            //Rectangle ret = Screen.GetWorkingArea(this);
-            //Rectangle ret = Screen.PrimaryScreen.Bounds;
-
-            //this.Size = new Size(ret.Width, ret.Height);
             this.WindowState = FormWindowState.Maximized;
-            //this.mainPanel.ClientSize = new Size(ret.Width, ret.Height);
             this.mainPanel.Dock = DockStyle.Fill;
-            //this.mainPanel.BringToFront();
 
             this.BringToFront();
         }
@@ -52,16 +46,11 @@ namespace WebGalEngine
         public void InitializeChromium()
         {
             CefSettings settings = new CefSettings();
-            // Initialize cef with the provided settings
             Cef.Initialize(settings);
-            // Create a browser component
 
             String page = string.Format(@"{0}\html\index.html", Application.StartupPath);
-            // Get current file page
 
             chromeBrowser = new ChromiumWebBrowser(page);
-            // Add it to the form and fill it to the form window.
-            //this.Controls.Add(chromeBrowser);
             mainPanel.Controls.Add(chromeBrowser);
             chromeBrowser.Dock = DockStyle.Fill;
 
