@@ -65,7 +65,7 @@ namespace WebGalEngine
         public MainForm()
         {
             // TODO: 从配置文件load分辨率
-            currentPanelSize = new Size(1600, 900);
+            this.currentPanelSize = new Size(1600, 900);
 
             InitializeComponent();
 
@@ -76,6 +76,7 @@ namespace WebGalEngine
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+             
             Cef.Shutdown();
         }
 
