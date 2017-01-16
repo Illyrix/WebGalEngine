@@ -1,6 +1,6 @@
 (function(){
     var temp_var = true;
-    Engine.Scenario = Engine.Scenario.concat(
+    EngineUser.Scenario = EngineUser.Scenario.concat(
         new Array(
             function(){console.log("step0"); Engine.Control.wait(1500, function(){console.log(Engine.Control);Engine.Control.wait(1500,function(){console.log(Engine.Control);});});},
             function(){Engine.Proc.goto("CH1");console.log("step1");},

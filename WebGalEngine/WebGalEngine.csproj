@@ -151,6 +151,9 @@
     <Content Include="html\index.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="html\js\config.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="html\js\scenario.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
