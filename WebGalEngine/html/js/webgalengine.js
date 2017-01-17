@@ -11,11 +11,13 @@ Engine = new function(){
         Engine.Control = new Control();
         Engine.Draw = new Draw();
         Engine.Setting = new Setting();
+        Engine.Audio = new Audio();
 
         Engine.Proc.init();
         Engine.Control.init();
         Engine.Draw.init();
         Engine.Setting.init();
+        Engine.Audio.init();
     };
 
     // 对与剧情分支有关的全局/局部变量的存储
@@ -70,12 +72,16 @@ Engine = new function(){
         // 调用栈,call之后需要返回
         this.callStack = new Array();
         this.call = function(label, setRead) {
-            Engine.Proc.callStack.push(label);
+            Engine.Proc.callStack.push(this.pc);
             Engine.Proc.goto(label, setRead);
         };
         this.back = function() {
-            var label = Engine.Proc.callStack.push();
-            Engine.Proc.goto(label, false);
+            if (Engine.Proc.callStack.length == 0) {
+                throw new Error("Call's nums donot match back's");
+                return;
+            }
+            var pc = Engine.Proc.callStack.pop();
+            Engine.Proc.pc = pc;
         };
 
         this.pc = 0;    // 执行到哪一步
@@ -110,6 +116,13 @@ Engine = new function(){
             
             this._div = document.createElement('div');
             document.getElementById("divContainer").appendChild(this._div);
+
+            this._div.style.position = "absolute";      // 修改为绝对定位
+            this._div.style.backgroundPosition = "top left";
+            this._div.style.backgroundAttachment = "fixed";
+            this._div.style.backgroundRepeat = "no-repeat";
+            this._div.style.overflow = "hidden";
+
             this._top = EngineUser.Default.MessageLayerTop;
             this._left = EngineUser.Default.MessageLayerLeft;
             this._bottom = EngineUser.Default.MessageLayerBottom;
@@ -120,6 +133,9 @@ Engine = new function(){
             // 自动居中
             this._autoMargin = EngineUser.Default.MessageLayerAutoMargin;
 
+            // 这里的alpha会影响上面的TextAreas,若要字的显示不受影响
+            // 请使用bgcolor=rgba(255,255,255,0.5)
+            // 或者带有透明度的图片作为背景
             this._alpha = EngineUser.Default.MessageLayerAlpha;
             this._zIndex = EngineUser.Default.MessageLayerZIndex;
             this._bgimage = EngineUser.Default.MessageLayerBgImage;
@@ -166,13 +182,18 @@ Engine = new function(){
                     get: function() {return this._alpha;},
                     set: function(v) {this._alpha = v; this.update();}
                 },
-                bgimage: {
-                    get: function() {return this._bgimage;},
-                    set: function(v) {this._bgimage = v; this.update();}
-                },
                 bgcolor: {
                     get: function() {return this._bgcolor;},
                     set: function(v) {this._bgcolor = v; this.update();}
+                },
+                bgimage: {
+                    get: function() {return this._bgimage;},
+                    set: function(v) {
+                        if (typeof v == "string" && v.search(/url\(.*\)/i) == -1) {
+                            this._bgimage = "url(" + v +")";
+                        }else
+                            this._bgimage = v;
+                        this.update();}
                 },
                 visible: {
                     get: function() {return this._visible;},
@@ -187,9 +208,27 @@ Engine = new function(){
 
         // 立即更新显示
         this.MessageLayer.prototype.update = function(){
-            // do something
+            this.div.style.left = (typeof this.left == "number")?(this.left+"px"):this.left;
+            this.div.style.right = (typeof this.right == "number")?(this.right+"px"):this.right;
+            this.div.style.top = (typeof this.top == "number")?(this.top+"px"):this.top;
+            this.div.style.bottom = (typeof this.bottom == "number")?(this.bottom+"px"):this.bottom;
+            this.div.style.backgroundColor = (this.bgcolor)?this.bgcolor:"";
+            this.div.style.backgroundImage = (this.bgimage)?this.bgimage:"";
+            this.div.style.width = (typeof this.width == "number")?(this.width+"px"):this.width;
+            this.div.style.height = (typeof this.height == "number")?(this.height+"px"):this.height;
+            this.div.style.zIndex = (this.zIndex)?this.zIndex:"";
+            this.div.style.display = (this.visible)?"block":"none";
+            this.div.style.opacity = this.alpha;
+            // 设置autoMargin的时候会自动无视left和right的设定值
+            if (this.autoMargin && this.width) {
+                var pNwidth = this.div.parentNode.offsetWidth;
+                var margin = (pNwidth - parseInt(this.width))/2;
+                this.div.style.left = margin + "px";
+                this.div.style.right = "auto";
+            }
+
             for (let i in this.TextAreas) {
-                i.update();
+                this.TextAreas[i].update();
             }
         };
         // 这个time不仅设置动画的时间,也告诉Control有延时任务
@@ -217,11 +256,13 @@ Engine = new function(){
         this.TextArea = function(MessageLayer) {
             this._div = document.createElement('div');
             MessageLayer.div.appendChild(this._div);
+            MessageLayer.TextAreas.push(this);
 
             this._div.style.position = "absolute";      // 修改为绝对定位
             this._div.style.backgroundPosition = "top left";
             this._div.style.backgroundAttachment = "fixed";
             this._div.style.backgroundRepeat = "no-repeat";
+            this._div.style.overflow = "hidden";
 
 
             this._text = EngineUser.Default.TextAreaText;
@@ -234,10 +275,20 @@ Engine = new function(){
             this._left = EngineUser.Default.TextAreaLeft;
             this._bottom = EngineUser.Default.TextAreaBottom;
             this._right = EngineUser.Default.TextAreaRight;
+            this._width = EngineUser.Default.TextAreaWidth;
+            this._height = EngineUser.Default.TextAreaHeight;
             // 删除某个位置设定即设置为"" eg: this.top = "";
 
-            this._bgcolor = "rgba(255, 255, 255, 0)";
-            this._bgimage = false;
+            this._border = EngineUser.Default.TextAreaBorder;
+            Object.seal(this._border);
+            this._borderRadius = EngineUser.Default.TextAreaBorderRadius;
+
+
+            // 自动居中
+            this._autoMargin = EngineUser.Default.TextAreaAutoMargin;
+
+            this._bgcolor = EngineUser.Default.TextAreaBgColor;
+            this._bgimage = EngineUser.Default.TextAreaBgImage;
 
             Object.defineProperties(this, {
                 div: {
@@ -268,9 +319,33 @@ Engine = new function(){
                     get: function() {return this._bottom;},
                     set: function(v) {this._bottom = v; this.update();}
                 },
+                width: {
+                    get: function() {return this._width;},
+                    set: function(v) {this._width = v; this.update();}
+                },
+                height: {
+                    get: function() {return this._height;},
+                    set: function(v) {this._height = v; this.update();}
+                },
+                border: {
+                    get: function() {return this._border;},
+                    set: function(v) {this._border = v; this.update();}
+                },
+                borderRadius: {
+                    get: function() {return this._borderRadius;},
+                    set: function(v) {this._borderRadius = v; this.update();}
+                },
+                autoMargin: {
+                    get: function() {return this._autoMargin;},
+                    set: function(v) {this._autoMargin = v; this.update();}
+                },
                 bgcolor: {
                     get: function() {return this._bgcolor;},
                     set: function(v) {this._bgcolor = v; this.update();}
+                },
+                stopDraw: {
+                    get: function() {return this._stopDraw;},
+                    set: function(v) {this._stopDraw = v; this.update();}
                 },
                 bgimage: {
                     get: function() {return this._bgimage;},
@@ -288,15 +363,22 @@ Engine = new function(){
 
             // 显示在区域内的字符串.用于动画的中间过程
             this.strShown = "";
+            this._stopDraw  = false;      // 用于中断绘制动画
         };
 
         // 立即更新显示
         this.TextArea.prototype.update = function(){
             this.div.innerHTML = this.strShown;     // 注意这里不是this.text
-            this.div.style.left = this.left;
-            this.div.style.right = this.right;
-            this.div.style.top = this.top;
-            this.div.style.bottom = this.bottom;
+            this.div.style.left = (typeof this.left == "number")?(this.left+"px"):this.left;
+            this.div.style.right = (typeof this.right == "number")?(this.right+"px"):this.right;
+            this.div.style.top = (typeof this.top == "number")?(this.top+"px"):this.top;
+            this.div.style.bottom = (typeof this.bottom == "number")?(this.bottom+"px"):this.bottom;
+            this.div.style.width = (typeof this.width == "number")?(this.width+"px"):this.width;
+            this.div.style.height = (typeof this.height == "number")?(this.height+"px"):this.height;
+            this.div.style.borderWidth = this.border["border-width"];
+            this.div.style.borderStyle = this.border["border-style"];
+            this.div.style.borderColor = this.border["border-color"];
+            this.div.style.borderRadius = (typeof this.borderRadius == "number")?(this.borderRadius+"px"):this.borderRadius;
             this.div.style.backgroundColor = (this.bgcolor)?this.bgcolor:"";
             this.div.style.backgroundImage = (this.bgimage)?this.bgimage:"";
             this.div.style.fontFamily = this.font["font-family"];
@@ -305,10 +387,51 @@ Engine = new function(){
             this.div.style.lineHeight = this.font["line-height"];
             this.div.style.textShadow = this.font["text-shadow"];
             this.div.style.WebkitTextStroke = this.font["-webkit-text-stroke"];
+            // 设置autoMargin的时候会自动无视left和right的设定值
+            if (this.autoMargin && this.width) {
+                var pNwidth = this.div.parentNode.offsetWidth;
+                var margin = (pNwidth - parseInt(this.width))/2;
+                this.div.style.left = margin + "px";
+                this.div.style.right = "auto";
+            }
         };
 
-        this.TextArea.prototype.show = function() {
+        // time 传入undefined或者false就是使用Setting里的设置动画速度
+        this.TextArea.prototype.show = function(time, interrupt, callable){
+            if (this.noAnime) {
+                this.strShown = this.text;
+                this.update();
+                return;
+            }
+            interrupt = interrupt || true;
+            time = time || Engine.Setting.readTxtSpd;
 
+            if (this.stopDraw)                // 清除终止绘制指令
+                    this.stopDraw = false;
+
+            var that = this;
+            var count = 0;
+            var cpyText = this.text;        // 复制一份text以防止text在动画未完成时修改
+            (function interval() {
+                if (that.stopDraw) {
+                    that.stopDraw = false;
+                    that.strShown = that.text;
+                    that.update();
+                    if (typeof callable == "function") callable();                         // callable 在动画被中断的时候执行么?
+                    return;
+                }else{
+                    if (count == cpyText.length) {
+                        if (typeof callable == "function") callable();
+                        return;
+                    }
+                    that.strShown = cpyText.slice(0, count+1);
+                    that.update();
+                    count++;
+                    if (!interrupt)
+                        Engine.Control.wait(time);
+                    setTimeout(function(){interval();}, time);
+                }
+            }())
         };
 
         // 此函数将会清除该TextArea上的文字和设定回默认样式(不清除位置设定).
@@ -383,6 +506,7 @@ Engine = new function(){
         };
     }
 
+    // 所有操作控制(如右键单击,左键单击,enter键等)
     function Control() {
         this.init = function() {
             // 初始化工作
@@ -471,6 +595,21 @@ Engine = new function(){
             Engine.Setting.skipNoRead = EngineUser.Default.SettingSkipNoRead;
         }
     };
+
+    function Audio() {
+        this.init = function() {
+        };
+
+        // 存储所有播放器列表
+        this.Players = new Array();
+
+        this.Player = function() {
+            this.audioNode =  document.createElement('audio');
+            document.getElementById("audioContainer").appendChild(this.audioNode);
+            
+        }
+
+    }
 }
 
 function ud(){

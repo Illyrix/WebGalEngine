@@ -1,4 +1,4 @@
-// 用户系统运行配置
+// 程序系统运行配置
 EngineUser.Config = {
     settingPath: "./config.json",   // Engine.Setting中系统设置存储的目录
     savePath: "./save/",            // 存档目录
@@ -13,7 +13,7 @@ EngineUser.Default = {
     SettingBgmVolumn: 1,
     SettingSpkVolumn: 1,
     SettingEffVolumn: 1,
-    SettingReadTxtSpd: 200,
+    SettingReadTxtSpd: 150,
     SettingNoReadTxtSpd: 400,
     SettingAutoModeSpd: 400,
     SettingTextNoDelay: false,
@@ -41,7 +41,14 @@ EngineUser.Default = {
     TextAreaLeft: 0,
     TextAreaBottom: 0,
     TextAreaRight: 0,
+    TextAreaWidth: "auto",
+    TextAreaHeight: "auto",
+    TextAreaBorder: {"border-width": "", "border-style": "none", "border-color": "transparent"},
+    TextAreaBorderRadius: 0,
+    TextAreaAutoMargin: false,
     TextAreaNoAnime: false,
+    TextAreaBgColor: "rgba(255, 255, 255, 0)",
+    TextAreaBgImage: false,
 
     PictureLayerSrc: "",
     PictureLayerVisible: false,
@@ -50,7 +57,7 @@ EngineUser.Default = {
     PictureLayerScale: 1,
     PictureLayerReversVertical: false,
     PictureLayerReversHorizontal: false,
-    PictureLayerZIndex: 1000,
+    PictureLayerZIndex: 0,
     PictureLayerTop: 0,
     PictureLayerLeft: 0,
     PictureLayerRight: 0,
