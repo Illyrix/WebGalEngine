@@ -67,10 +67,10 @@ A Gal Engine based on CEF.
     ```
   2. #### EngineUser.Config
     程序系统运行配置
-    1. EngineUser.Config.settingPath 存储设置的文件目录
-    2. EngineUser.Config.savePath 存档目录
-    3. EngineUser.Config.saveMainfest 存档清单(包含几个存档,存档的文件名等)
-    4. EngineUser.Config.canvasRefresh canvas刷新间隔时间
+      1. EngineUser.Config.settingPath 存储设置的文件目录
+      2. EngineUser.Config.savePath 存档目录
+      3. EngineUser.Config.saveMainfest 存档清单(包含几个存档,存档的文件名等)
+      4. EngineUser.Config.canvasRefresh canvas刷新间隔时间
 
   3. ### EngineUser.Default
     默认值设定  
@@ -110,9 +110,8 @@ A Gal Engine based on CEF.
     * ##### Engine.Proc.labels
       存储 label 对应的场景下标:  
       `{"Label1":5, "Label4":88}`
-
     > Engine.Proc.labels 和 Engine.Proc.scenarios 均在 Engine.Proc.init() 中被初始化
-
+    
     * ##### Engine.Proc.read
       记录场景是否已读的信息:  
       `[true, , , , true, true]`  
@@ -122,3 +121,4 @@ A Gal Engine based on CEF.
       `[23, 56]`
     * ##### Engine.Proc.pc
       记录执行到哪一步(process counter)
+  4. ####
