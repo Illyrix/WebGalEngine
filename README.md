@@ -94,9 +94,9 @@ A Gal Engine based on CEF.
     * ##### Engine.Proc.init()
       初始化工作, 确定 label 的位置等, 将会在 `Engine.init()` 中被调用  
     * ##### Engine.Proc.goto(label, setRead)
-      将流程跳转到指定 label
-      * **label** 要跳转的 label
-      * **setRead** 在跳转过程中设置跳转中间部分为已读(`true`)或者不做设置(`false`)
+      将流程跳转到指定 label  
+        **label** 要跳转的 label  
+        **setRead** 在跳转过程中设置跳转中间部分为已读(`true`)或者不做设置(`false`)
     * ##### Engine.Proc.call(label, setRead)
       同 _Engine.Proc.goto_, 但此种跳转可以用 `Engine.Proc.back()` 来返回跳转前的进度
     * ##### Engine.Proc.back()
@@ -112,13 +112,13 @@ A Gal Engine based on CEF.
       `{"Label1":5, "Label4":88}`
     > Engine.Proc.labels 和 Engine.Proc.scenarios 均在 Engine.Proc.init() 中被初始化
     
-    * ##### Engine.Proc.read
-      记录场景是否已读的信息:  
-      `[true, , , , true, true]`  
-      此数组应该在 save 操作的时候保存/或者在 `Engine.Vars.Global` 中保存
-    * ##### Engine.Proc.callStack
-      保存 call 的调用栈, 在 save 的时候视情况保存或不保存  
-      `[23, 56]`
-    * ##### Engine.Proc.pc
-      记录执行到哪一步(process counter)
+      * ##### Engine.Proc.read
+        记录场景是否已读的信息:  
+        `[true, , , , true, true]`  
+        此数组应该在 save 操作的时候保存/或者在 `Engine.Vars.Global` 中保存
+      * ##### Engine.Proc.callStack
+        保存 call 的调用栈, 在 save 的时候视情况保存或不保存  
+        `[23, 56]`
+      * ##### Engine.Proc.pc
+        记录执行到哪一步(process counter)
   4. ####
