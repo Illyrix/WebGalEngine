@@ -11,6 +11,9 @@ body {
     font-family: "Segoe UI", "Lucida Grande", "Hiragino Sans GB W3", "Microsoft YaHei", Tahoma, sans-serif;
     width: 100vw;
     height: 100vh;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #canvasContainer {

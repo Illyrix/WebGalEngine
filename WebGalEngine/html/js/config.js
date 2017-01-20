@@ -13,7 +13,7 @@ EngineUser.Default = {
     SettingBgmVolumn: 1,
     SettingSpkVolumn: 1,
     SettingEffVolumn: 1,
-    SettingReadTxtSpd: 150,
+    SettingReadTxtSpd: 120,
     SettingNoReadTxtSpd: 400,
     SettingAutoModeSpd: 400,
     SettingTextNoDelay: false,
@@ -30,13 +30,17 @@ EngineUser.Default = {
     MessageLayerAlpha: 0.8,
     MessageLayerZIndex: 1000,
     MessageLayerBgImage: false,
-    MessageLayerBgColor: "rgba(103, 228, 197, 0.3)",
+    MessageLayerBgColor: "rgba(103, 228, 197, 0.7)",
     MessageLayerVisible: false,
+    MessageLayerOnLeftClick: function(){},
+    MessageLayerOnRightClick: function(){},
+
 
     TextAreaText: "",
-    TextAreaFont: {"font-family":"Microsoft YaHei", "font-size":"14px", "font-weight":"700",
-        "line-height":"16px", "text-shadow":"2px 2px 4px orange",
-        "-webkit-text-stroke":"1px green"},
+    TextAreaFont: {"font-family":"Hiragino Sans GB W3", "font-size":"28px", "font-weight":"bolder",
+        "line-height":"30px", "text-shadow":"0px 0px 0.2em #45f",
+        "-webkit-text-stroke":"0px #8df"},
+    TextAreaColor: "#FFF",
     TextAreaTop: 0,
     TextAreaLeft: 0,
     TextAreaBottom: 0,
@@ -47,6 +51,8 @@ EngineUser.Default = {
     TextAreaBorderRadius: 0,
     TextAreaAutoMargin: false,
     TextAreaNoAnime: false,
+    TextAreaOnLeftClick: function(){},
+    TextAreaOnRightClick: function(){},
     TextAreaBgColor: "rgba(255, 255, 255, 0)",
     TextAreaBgImage: false,
 
@@ -72,5 +78,7 @@ EngineUser.Default = {
     ContorlSkip: false,
     ContorlRecordRead: true,
 
-
+    AudioSrc: "",
+    AudioSwitchTime: 2000,   // 音频切换过渡时间
+    AudioSwitchStep: 50,
 }
