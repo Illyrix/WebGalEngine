@@ -6,10 +6,12 @@
                 window.O.show("step0:测试测试测试TestTestTest123123123\
 测试测试测试TestTestTest123123123测试测试测试TestT\
 estTest123123123");
+                window.R.show(Engine.Animation.fideInDown, 1500);
             },
             function(){
                 Engine.Proc.goto("CH1");
                 window.O.show("step1:TestTestTest测试测试测试123123123");
+                window.R.disappear(Engine.Animation.fideOutDown, 1500);
             },
             {label:"CH0"},  // 设置标签CH0
             function(){

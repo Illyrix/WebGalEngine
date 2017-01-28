@@ -109,6 +109,12 @@ Engine = new function(){
         };
         this.MessageLayers = new Array();
         this.PictureLayers = new Array();
+        // 每16ms更新画布
+        setInterval(function(){
+            for(let i in Engine.Draw.PictureLayers) {
+                Engine.Draw.PictureLayers[i].update();
+            }
+        }, 16);
         this.MessageLayer = function() {
             var that = this;
             Engine.Draw.MessageLayers.push(this);   // 将自己添加到messagelayers
@@ -141,7 +147,7 @@ Engine = new function(){
             this._width = EngineUser.Default.MessageLayerWidth;
             this._height = EngineUser.Default.MessageLayerHeight;
 
-            // 自动居中
+            // 自动左右居中
             this._autoMargin = EngineUser.Default.MessageLayerAutoMargin;
 
             // 这里的alpha会影响上面的TextAreas,若要字的显示不受影响
@@ -270,7 +276,7 @@ Engine = new function(){
             time = time || 0;
             interrupt = interrupt || true;
 
-            // amination(time);
+            animation(this, time);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
@@ -280,7 +286,7 @@ Engine = new function(){
             time = time || 0;
             interrupt = interrupt || true;
 
-            // amination(time);
+            animation(this, time);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
@@ -508,7 +514,6 @@ Engine = new function(){
                     for (let i in that._stopDraw) {
                         if (parseInt(i) != stopInt) newArr[i] = that._stopDraw[i];
                     }
-                    console.log(stopInt, newArr);
                     that._stopDraw = newArr;
                     if (that._stopDraw.length == 0)
                         that.strShown = that.text;
@@ -538,12 +543,19 @@ Engine = new function(){
         };
 
         this.PictureLayer = function() {
+            Engine.Draw.PictureLayers.push(this);
 
             // 每个图像一层canvas
             this.src = EngineUser.Default.PictureLayerSrc;
+            this._image = new Image();
 
             this.canvas = document.createElement("canvas");
+            this.canvas.height = document.getElementById("canvasContainer").offsetHeight;
+            this.canvas.width = document.getElementById("canvasContainer").offsetWidth;
+            this.canvas.style.position = "absolute";
+            this.canvas.style.zIndex = EngineUser.Default.PictureLayerZIndex;
             document.getElementById("canvasContainer").appendChild(this.canvas);
+            this._context = this.canvas.getContext("2d");
 
             this.visible = EngineUser.Default.PictureLayerVisible;
             this.alpha = EngineUser.Default.PictureLayerAlpha;
@@ -551,42 +563,61 @@ Engine = new function(){
             // 对图像进行矩形裁剪
             this.clip = EngineUser.Default.PictureLayerClip;
             Object.seal(this.clip);
-
+            /**************************** 弃用 **********************
             // 缩放, 大于1是放大;小于1是缩小
             this.scale = EngineUser.Default.PictureLayerScale;
+            *********************************************************/
+            this.width = EngineUser.Default.PictureLayerWidth;
+            this.height = EngineUser.Default.PictureLayerHeight;
             // 上下翻转
-            this.reversVertical = EngineUser.Default.PictureLayerReversVertical;
-            this.reversHorizontal = EngineUser.Default.PictureLayerReversHorizontal;
+            //this.reversVertical = EngineUser.Default.PictureLayerReversVertical;
+            //this.reversHorizontal = EngineUser.Default.PictureLayerReversHorizontal;
             // 在画布层的遮罩顺序, zIndex值较大者会覆盖住较小者
             /*
-             * 此处的zIndex和MessageLayer中的zIndex互不相干!
-             * 这个zIndex只和所有PictureLayer的zIndex比较.
-             * 同理MessageLayer里的zIndex也只跟MessageLayer比较.
-             * *** 不建议将两个PictureLayer设置一样的zIndex!(遮罩顺序无法预料) ***
-             * MessageLayer永远在PictureLayer之上!
+             * 此处的zIndex和MessageLayer中的zIndex相互影响!
+             * 这里默认值为0, MessageLayer的默认值是1000
              */
             this.zIndex = EngineUser.Default.PictureLayerZIndex;
             this.top = EngineUser.Default.PictureLayerTop;
             this.left = EngineUser.Default.PictureLayerLeft;
-            this.bottom = EngineUser.Default.PictureLayerRight;
-            this.right = EngineUser.Default.PictureLayerBottom;
             // 画布永远是分辨率的长宽,充满整个屏幕, top,left这些属性设置的是图片填充的位置
         };
 
         // 一般来说会根据canvas的渲染频率(60Hz)进行update
         // 所以不需要 setter 和 getter(在更新之后下一帧的时候就会把更新后的渲染)
         this.PictureLayer.prototype.update = function(){
-
+            // 清空画布
+            this.canvas.style.zIndex = this.zIndex;
+            this._context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.canvas.style.opacity = this.alpha;
+            if (! this.visible) this.canvas.style.opacity = 0.0;
+            this._image.src = this.src;
+            this._context.drawImage(this._image, 
+                this.clip.enable?this.clip.left:0,
+                this.clip.enable?this.clip.top:0,
+                this.clip.enable?this.clip.width:this._image.width,
+                this.clip.enable?this.clip.height:this._image.height,
+                this.left,
+                this.top,
+                this.width?this.width:this._image.width,
+                this.height?this.height:this._image.height);
         };
         // 清除画布上的图片和设定的位置,src等参数.
         this.PictureLayer.prototype.clear = function() {
-
+            this.clip = EngineUser.Default.PictureLayerClip;
+            Object.seal(this.clip);
+            this.width = EngineUser.Default.PictureLayerWidth;
+            this.height = EngineUser.Default.PictureLayerHeight;
+            this.zIndex = EngineUser.Default.PictureLayerZIndex;
+            this.top = EngineUser.Default.PictureLayerTop;
+            this.left = EngineUser.Default.PictureLayerLeft;
+            this.src = EngineUser.Default.PictureLayerSrc;
         };
         this.PictureLayer.prototype.show = function(animation, time, interrupt, callable) {
             time = time || 0;
             interrupt = interrupt || true;
 
-            // amination(time);
+            animation(this, time);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
@@ -595,12 +626,273 @@ Engine = new function(){
             time = time || 0;
             interrupt = interrupt || true;
 
-            // amination(time);
+            animation(this, time);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
         };
     }
+
+    // 暂时4种动画效果
+    this.Animation = {
+        fideInLeft: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "left", distance);},
+        fideInRight: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "right", distance);},
+        fideInUp: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "up", distance);},
+        fideInDown: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "down", distance);},
+        fideOutLeft: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "left", distance);},
+        fideOutRight: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "right", distance);},
+        fideOutUp: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "up", distance);},
+        fideOutDown: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "down", distance);},
+        // Layer必须要有left,top,alpha属性
+        fideIn: function(Layer, time, direction, distance){
+            var steps =  EngineUser.Default.AnimationFideInSteps;   // 动画的补间个数
+            direction = direction || "left";
+            distance = distance || EngineUser.Default.AnimationFideInDistance;              // 动画路径长度
+            var i = 0;
+            var tmpAlpha = Layer.alpha;
+            Layer.alpha = 0.0;
+            Layer.visible = true;
+            switch(direction.toLowerCase()){
+                case "left":
+                    if (Layer.autoMargin) {                                         // 通过autoMargin控制位置, 一定是 MessageLayer
+                        var left = parseInt(Layer.div.style.left.slice(0, -2));
+                        left = left - distance;
+                        Layer.div.style.left = left + "px";
+                        var inter = setInterval(function(){
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha + parseFloat(tmpAlpha/steps);
+                            Layer.div.style.left = left+distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
+                        var tmpRight = Layer.right = Layer.right + distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.right = tmpRight-distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }else{                                                          // 通过left控制位置
+                        var tmpLeft = Layer.left = Layer.left - distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.left = tmpLeft+distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                        }
+                    break;
+                case "right":
+                    if (Layer.autoMargin) {                                         // 通过autoMargin控制位置, 一定是 MessageLayer
+                        var left = parseInt(Layer.div.style.left.slice(0, -2));
+                        left = left + distance;
+                        Layer.div.style.left = left + "px";
+                        var inter = setInterval(function(){
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha + parseFloat(tmpAlpha/steps);
+                            Layer.div.style.left = left-distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
+                        var tmpRight = Layer.right = Layer.right - distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.right = tmpRight+distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }else{                                                          // 通过left控制位置
+                        var tmpLeft = Layer.left = Layer.left + distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.left = tmpLeft-distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }
+                    break;
+                case "down":
+                    if (Layer.top === undefined || Layer.top === "") {
+                        var tmpBottom = Layer.bottom = Layer.bottom + distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.bottom = tmpBottom-distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }else{
+                        var tmpTop = Layer.top = Layer.top - distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.top = tmpTop+distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }
+                    break;
+                case "up":
+                    if (Layer.top === undefined || Layer.top === "") {
+                        var tmpBottom = Layer.bottom = Layer.bottom - distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.bottom = tmpBottom+distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }else{
+                        var tmpTop = Layer.top = Layer.top + distance;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.top = tmpTop-distance/steps*i;
+                            i++;
+                            if (i>=steps) clearInterval(inter);
+                        }, time/steps);
+                    }
+                    break;
+                default:
+                    throw new Error("Error direction input: "+direction);
+            }
+        },
+        fideOut: function(Layer, time, direction, distance){
+            var steps =  EngineUser.Default.AnimationFideInSteps;   // 动画的补间个数
+            direction = direction || "left";
+            distance = distance || EngineUser.Default.AnimationFideInDistance;              // 动画路径长度
+            var i = 0;
+            var tmpAlpha = Layer.alpha;
+            switch(direction.toLowerCase()){
+                case "left":
+                    if (Layer.autoMargin) {                                         // 通过autoMargin控制位置, 一定是 MessageLayer
+                        var left = parseInt(Layer.div.style.left.slice(0, -2));
+                        var inter = setInterval(function(){
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha - parseFloat(tmpAlpha/steps);
+                            Layer.div.style.left = left-distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
+                        var tmpRight = Layer.right;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.right = tmpRight+distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }else{                                                          // 通过left控制位置
+                        var tmpLeft = Layer.left;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.left = tmpLeft-distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                        }
+                    break;
+                case "right":
+                    if (Layer.autoMargin) {                                         // 通过autoMargin控制位置, 一定是 MessageLayer
+                        var left = parseInt(Layer.div.style.left.slice(0, -2));
+                        var inter = setInterval(function(){
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha - parseFloat(tmpAlpha/steps);
+                            Layer.div.style.left = left+distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
+                        var tmpRight = Layer.right;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.right = tmpRight+distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }else{                                                          // 通过left控制位置
+                        var tmpLeft = Layer.left;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.left = tmpLeft+distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }
+                    break;
+                case "down":
+                    if (Layer.top === undefined || Layer.top === "") {
+                        var tmpBottom = Layer.bottom;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.bottom = tmpBottom-distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }else{
+                        var tmpTop = Layer.top;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.top = tmpTop+distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }
+                    break;
+                case "up":
+                    if (Layer.top === undefined || Layer.top === "") {
+                        var tmpBottom = Layer.bottom;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.bottom = tmpBottom+distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }else{
+                        var tmpTop = Layer.top;
+                        var inter = setInterval(function(){
+                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.top = tmpTop-distance/steps*i;
+                            i++;
+                            if (i>=steps) {
+                                Layer.visible = false;
+                                clearInterval(inter);
+                            }
+                        }, time/steps);
+                    }
+                    break;
+                default:
+                    throw new Error("Error direction input: "+direction);
+            }
+        },
+        hide: function(Layer){
+            Layer.visible = false;
+        },
+        show: function(Layer){
+            Layer.visible = true;
+        }
+    };
 
     // 所有操作控制(如右键单击,左键单击,enter键等)
     function Control() {
@@ -667,11 +959,39 @@ Engine = new function(){
         // 设置接下来的过程是否记录"已读"
         this.recordRead = EngineUser.Default.ContorlRecordRead;
 
+        /*
+         * saveMainfest 存储: 
+         [
+            {
+                title: "12月11日 剧情文字等等等",
+                saveTime: "1484908068203"            // <------时间戳
+                saveFile: "./save/sav1.json",
+                thumbFile: "./save/sav1.thumb"       // <------缩略图片
+            },
+            {
+                title: "12月28日 剧情文字等等等",
+                saveTime: "1484908130215"            // <------时间戳
+                saveFile: "./save/sav2.json",
+                thumbFile: "./save/sav2.thumb"       // <------缩略图片
+            }
+        ]
+         */
         this.listSaves = function() {
-
+            if (EngineObject.existsFile(EngineUser.Config.saveMainfest)) {
+                var mainfest = EngineObject.readFile(EngineUser.Config.saveMainfest);
+                return JSON.parse(mainfest);
+            }else{
+                EngineObject.writeFile(EngineUser.Config.saveMainfest, "[]");
+                return [];
+            }
         };
         // save 和 load 的时候还需要保存和载入Layers的状态
+        /*
+         * 档save结构:
+         
+         */
         this.save = function(id) {
+            if (this.listSaves()[id] == undefined) {return false;}
 
         };
         this.load = function(id) {
@@ -814,19 +1134,6 @@ Engine = new function(){
     }
 }
 
-function ud(){
-        // 每16ms更新画布
-        setInterval(function(){
-            var arr = Engine.Draw.PictureLayers.concat();
-            arr.sort(function(a, b){
-                return a.zIndex - b.zIndex;
-            });
-            for(let i in arr) {
-                i.update();
-            }
-        }, 16);
-    }
-
 window.onload = function() {
     Engine.init();
     window.M = new Engine.Draw.MessageLayer();
@@ -841,8 +1148,22 @@ window.onload = function() {
     O.autoMargin = true;
     O.width = 1000;
     O.top = 30;
-    document.body.background = "http://localhost/test2/08.jpg";
-    document.body.style.backgroundSize = "cover";
+    //document.body.background = "http://localhost/test2/08.jpg";
+    //document.body.style.backgroundSize = "cover";
+    window.Q = new Engine.Draw.PictureLayer();
+    Q.src = "http://localhost/test2/09.jpg";
+    Q.visible = true;
+    Q.width = 1600;
+    Q.height = 900;
+    Q.zIndex = 0;
+
+    window.R = new Engine.Draw.PictureLayer();
+    R.src = "http://localhost/test2/lh.png";
+    R.top = 100;
+    R.left = 50;
+    R.visible = false;
+    R.zIndex = 5;
+
     document.onclick = function(e) {
         if (e.button == 0 && Engine.Control.lClickEnabled) {
             if (O.text == O.strShown) {

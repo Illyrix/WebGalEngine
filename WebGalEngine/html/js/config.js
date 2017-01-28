@@ -22,8 +22,8 @@ EngineUser.Default = {
 
     MessageLayerTop: 0,
     MessageLayerLeft: 0,
-    MessageLayerRight: 0,
-    MessageLayerBottom: 0,
+    MessageLayerRight: "",
+    MessageLayerBottom: "",
     MessageLayerWidth: 0,
     MessageLayerHeight: 0,
     MessageLayerAutoMargin: false,
@@ -60,7 +60,9 @@ EngineUser.Default = {
     PictureLayerVisible: false,
     PictureLayerAlpha: 1,
     PictureLayerClip: {left:0, top:0, width:0, height:0, enable:false},
-    PictureLayerScale: 1,
+    // 弃用 PictureLayerScale: 1,
+    PictureLayerWidth: false,       // false 即是不做设置, 以图片宽高为准
+    PictureLayerHeight: false,
     PictureLayerReversVertical: false,
     PictureLayerReversHorizontal: false,
     PictureLayerZIndex: 0,
@@ -68,6 +70,9 @@ EngineUser.Default = {
     PictureLayerLeft: 0,
     PictureLayerRight: 0,
     PictureLayerBottom: 0,
+
+    AnimationFideInSteps: 50,     // 动画的补间个数
+    AnimationFideInDistance: 30,  // 动画路径长度
 
     ControlrClickEnabled: true,
     ControllClickEnabled: true,
