@@ -2,35 +2,36 @@
     var temp_var = true;
     EngineUser.Scenario = EngineUser.Scenario.concat(
         new Array(
+            {label:"start"},
             function(){
-                window.O.show("step0:测试测试测试TestTestTest123123123\
+                Engine.Draw.MessageLayers[0].TextAreas[0].show("step0:测试测试测试TestTestTest123123123\
 测试测试测试TestTestTest123123123测试测试测试TestT\
 estTest123123123");
-                window.R.show(Engine.Animation.fideInDown, 1500);
+                Engine.Draw.PictureLayers[1].show(Engine.Animation.fideIn, {time:1500, direction:"up"});
             },
             function(){
                 Engine.Proc.goto("CH1");
-                window.O.show("step1:TestTestTest测试测试测试123123123");
-                window.R.disappear(Engine.Animation.fideOutDown, 1500);
+                Engine.Draw.MessageLayers[0].TextAreas[0].show("step1:TestTestTest测试测试测试123123123");
+                Engine.Draw.PictureLayers[1].disappear(Engine.Animation.fideOut, {time:1500, direction:"right"});
             },
             {label:"CH0"},  // 设置标签CH0
             function(){
                 temp_var = false;
-                window.O.show("step2:123123123测试测试测试TestTestTest");
+                Engine.Draw.MessageLayers[0].TextAreas[0].show("step2:123123123测试测试测试TestTestTest");
                 Engine.Proc.goto("CH2");
             },
             {label:"CH1"},
-            function(){O.show("step3:Test123测试测试TestTest测试123123");},
+            function(){Engine.Draw.MessageLayers[0].TextAreas[0].show("step3:Test123测试测试TestTest测试123123");},
             function(){
                 temp_var = true;
-                window.O.show("step4:测试123测试Test测试Test123Test123");
+                Engine.Draw.MessageLayers[0].TextAreas[0].show("step4:测试123测试Test测试Test123Test123");
             },
             {label:"CH2"},
             function(){
-                window.O.show("step5:321测试123123测试TestTest测试Test123");
+                Engine.Draw.MessageLayers[0].TextAreas[0].show("step5:321测试123123测试TestTest测试Test123");
                 if (temp_var) Engine.Proc.goto("CH0");
             },
-            function(){window.O.show("step6:Test987测试123测试Test546Test123");}
+            function(){Engine.Draw.MessageLayers[0].TextAreas[0].show("step6:Test987测试123测试Test546Test123");Engine.Proc.goto("start");}
         )
     );
 }())

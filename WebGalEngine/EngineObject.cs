@@ -24,22 +24,27 @@ namespace WebGalEngine
             if (!this.existsFile(relativePath))
                 throw new Exception("No such file");
             StreamReader sr = new StreamReader(realPath);
-           return sr.ReadToEnd();
+            string data = sr.ReadToEnd();
+            sr.Close();
+            return data;
         }
 
         public bool existsFile(string relativePath)
         {
             string realPath = string.Format(@"{0}\" + relativePath, Application.StartupPath);
-            return System.IO.File.Exists(realPath);
+            return File.Exists(realPath);
         }
 
         public void writeFile(string relativePath, string data, bool append = true)
         {
             string realPath = string.Format(@"{0}\" + relativePath, Application.StartupPath);
+            string path = Path.GetDirectoryName(realPath);
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
             if (append)
-                System.IO.File.AppendAllText(realPath, data);
+                File.AppendAllText(realPath, data);
             else
-                System.IO.File.WriteAllText(realPath, data);
+                File.WriteAllText(realPath, data);
         }
         
         

@@ -4,7 +4,7 @@ EngineUser.Config = {
     savePath: "./save/",            // 存档目录
     saveMainfest: "./save/mainfest.json",  // 存档的清单(包含几个存档,存档的文件名等)
     canvasRefresh: 16,              // 每?ms刷新canvas
-
+    globalSavePath: "./save/global.json",   // 全局变量的存储地址
 
 };
 
@@ -13,9 +13,9 @@ EngineUser.Default = {
     SettingBgmVolumn: 1,
     SettingSpkVolumn: 1,
     SettingEffVolumn: 1,
-    SettingReadTxtSpd: 120,
-    SettingNoReadTxtSpd: 400,
-    SettingAutoModeSpd: 400,
+    SettingReadTxtSpd: 20,
+    SettingNoReadTxtSpd: 40,
+    SettingAutoModeSpd: 200,
     SettingTextNoDelay: false,
     SettingIsWindowed: true,
     SettingSkipNoRead: false,

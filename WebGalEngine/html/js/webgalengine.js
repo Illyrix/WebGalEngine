@@ -7,6 +7,7 @@
 Engine = new function(){
 
     this.init = function (){
+        Engine.Vars = new Vars();
         Engine.Proc = new Proc();
         Engine.Control = new Control();
         Engine.Draw = new Draw();
@@ -20,14 +21,131 @@ Engine = new function(){
         Engine.Audio.init();
     };
 
+    // 序列化变量的函数
+    function serialize(data) {
+        var res = {};
+        res.type = typeof data;
+        res.data = {};
+        switch (typeof data) {
+            case "boolean":
+            case "number":
+            case "string":
+            case "function":
+                res.data = data.toString();
+                break;
+            case "undefined":
+                res.data = "";
+                break;
+            case "object":
+                if (data === null) {
+                    res.data = "";
+                    break;
+                }
+                for (let i in data) {
+                    res.data[i] = serialize(data[i]);
+                }
+                break;
+        }
+        return res;
+    }
+
+    function unSerialize(data) {
+        switch(data["type"]) {
+            case "boolean":
+            case "number":
+            case "function":
+                return eval("("+data["data"]+")");
+                break;
+            case "string":
+                return data["data"].toString();
+                break;
+            case "undefined":
+                return undefined;
+                break;
+            case "object":
+                var res = {};
+                if (data["data"] == "") return null;
+                for (let i in data["data"]) {
+                    res[i] = unSerialize(data["data"][i]);
+                }
+                return res;
+                break;
+        }
+    }
+
     // 对与剧情分支有关的全局/局部变量的存储
-    this.Vars = function() {
+    Vars = function() {
         // 在任何分支/周目都通用的变量(系统设置在Engine.Setting)
         this.Global = {};
         // 会随着save操作保存进档案的对剧情有影响的变量
+        // 所有临时变量均可能对剧情有影响, 故建议使用变量时通过申请变量而不是直接 var 
+        // (除非作用域仅限当前场景的函数)
         this.Local = {};
-        // 每次load操作/重启之后会清空
-        this.Temp = {};
+        /*  已弃用
+            // 每次load操作/重启之后会清空
+            this.Temp = {};
+        */
+        
+    }
+    Vars.prototype.assignLocal = function(name) {
+        var realValue = undefined;
+        Object.defineProperty(this.Local, name, {
+            configurable: true,                             // configurable:true是因为为false的话无法delete
+            enumerable: true,
+            get: function() {
+                return realValue; 
+            },
+            set: function(v) {
+                realValue = v;
+            }
+        });
+    }
+    Vars.prototype.assignGlobal = function(name) {
+        var realValue = undefined;
+        Object.defineProperty(this.Global, name, {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+                setTimeout(this.saveGlobal(), 5);           // 5ms之后存储到文件
+                                                            // 因为可能是以 Engine.Vars.Global.Obj.key = value 的形式导致Global对象变动
+                                                            // 所以每次读对象之后5ms再写入文件一次
+                return realValue;
+            },
+            set: function(v) {
+                realValue = v;
+                this.saveGlobal();
+            }
+        });
+    }
+    Vars.prototype.destroyLocal = function(name) {
+        return delete this.Local[name];
+    }
+    Vars.prototype.destroyGlobal = function(name) {
+        if (delete this.Global[name])
+            this.saveGlobal();
+    }
+    // 这里只有自动存储Global的函数, 存放Local的是Engine.Control.save()
+    /*
+     * 存储格式:
+     * 
+     {
+        var1: 
+        {
+            type: "function",
+            data: "function(){}"
+        },
+        var2:
+        {
+            type: "boolean",
+            data: "true"
+        }
+     }
+     *
+     */
+    Vars.prototype.saveGlobal = function(path) {
+        path = path || EngineUser.Config.globalSavePath;
+        data = serialize(this.Global);
+        EngineObject.writeFile(path, data, false);
     }
 
     // 对程序流程(剧情)进行控制
@@ -115,9 +233,18 @@ Engine = new function(){
                 Engine.Draw.PictureLayers[i].update();
             }
         }, 16);
+        Object.defineProperty(this, "MessageLayer", {enumerable: false, configurable: true, writable: true});   // 防止MessageLayer被遍历
         this.MessageLayer = function() {
             var that = this;
             Engine.Draw.MessageLayers.push(this);   // 将自己添加到messagelayers
+
+            const PROTECTED_PROPERTIES = ["_TextAreas", "_div", "_top", "_left", "_bottom", "_right", "_width", "_height", "_autoMargin", "_alpha", "_zIndex", "_bgimage", "_bgcolor", "_visible"];
+            for (let i in PROTECTED_PROPERTIES) {
+                Object.defineProperty(this, PROTECTED_PROPERTIES[i], {enumerable: false, configurable: true, writable: true});
+            }
+            Object.defineProperty(this.__proto__, "show", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this.__proto__, "disappear", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this.__proto__, "update", {enumerable: false, configurable: true, writable: true});
 
             // 内部的TextArea
             this._TextAreas = new Array();
@@ -164,50 +291,69 @@ Engine = new function(){
 
             Object.defineProperties(this, {
                 TextAreas: {
+                    enumerable: true,
                     get: function() {return this._TextAreas;},
                     set: function(v) {this._TextAreas = v; this.update();}
                 },
                 div: {
+                    enumerable: false,                          // 在for..in当前对象的时候不遍历这个属性
                     get: function() {return this._div;},
                     set: function(v) {this._div = v; this.update();}
                 },
                 top: {
+                    enumerable: true,
                     get: function() {return this._top;},
                     set: function(v) {this._top = v; this.update();}
                 },
                 left: {
+                    enumerable: true,
                     get: function() {return this._left;},
                     set: function(v) {this._left = v; this.update();}
                 },
                 right: {
+                    enumerable: true,
                     get: function() {return this._right;},
                     set: function(v) {this._right = v; this.update();}
                 },
                 bottom: {
+                    enumerable: true,
                     get: function() {return this._bottom;},
                     set: function(v) {this._bottom = v; this.update();}
                 },
                 width: {
+                    enumerable: true,
                     get: function() {return this._width;},
                     set: function(v) {this._width = v; this.update();}
                 },
                 height: {
+                    enumerable: true,
                     get: function() {return this._height;},
                     set: function(v) {this._height = v; this.update();}
                 },
                 autoMargin: {
+                    enumerable: true,
                     get: function() {return this._autoMargin;},
                     set: function(v) {this._autoMargin = v; this.update();}
                 },
                 alpha: {
-                    get: function() {return this._alpha;},
-                    set: function(v) {this._alpha = v; this.update();}
+                    enumerable: true,
+                    set: function(v) {
+                        if (v > 1) v = 1;
+                        if (v < 0) v = 0;
+                        this._alpha = v;
+                        this.update();
+                    },
+                    get: function(v) {
+                        return this._alpha;
+                    }
                 },
                 bgcolor: {
+                    enumerable: true,
                     get: function() {return this._bgcolor;},
                     set: function(v) {this._bgcolor = v; this.update();}
                 },
                 bgimage: {
+                    enumerable: true,
                     get: function() {return this._bgimage;},
                     set: function(v) {
                         if (typeof v == "string" && v.search(/url\(.*\)/i) == -1) {
@@ -217,10 +363,12 @@ Engine = new function(){
                         this.update();}
                 },
                 visible: {
+                    enumerable: true,
                     get: function() {return this._visible;},
                     set: function(v) {this._visible = v; this.update();}
                 },
                 zIndex: {
+                    enumerable: true,
                     get: function() {return this._zIndex;},
                     set: function(v) {this._zIndex = v; this.update();}
                 }
@@ -272,29 +420,44 @@ Engine = new function(){
             }
         };
         // 这个time不仅设置动画的时间,也告诉Control有延时任务
-        this.MessageLayer.prototype.show = function(animation, time, interrupt, callable){
-            time = time || 0;
+        this.MessageLayer.prototype.show = function(animation, param, interrupt, callable){
+            ime = param.time || 0;
             interrupt = interrupt || true;
 
-            animation(this, time);
+            var newParam = {};
+            for (i in param) newParam[i] = param[i];
+            newParam['Layer'] = this;
+            animation(newParam);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
         };
 
-        this.MessageLayer.prototype.disappear = function(animation, time, interrupt, callable) {
-            time = time || 0;
+        this.MessageLayer.prototype.disappear = function(animation, param, interrupt, callable) {
+            ime = param.time || 0;
             interrupt = interrupt || true;
 
-            animation(this, time);
+            var newParam = {};
+            for (i in param) newParam[i] = param[i];
+            newParam['Layer'] = this;
+            animation(newParam);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
         };
 
-
+        Object.defineProperty(this, "TextArea", {enumerable: false, configurable: true, writable: true});       // 防止TextArea被遍历
         this.TextArea = function(MessageLayer) {
             var that = this;
+            
+            const PROTECTED_PROPERTIES = ["_div", "_text", "_font", "_color", "_top", "_left", "_bottom", "_right", "_width", "_height", "_border", "_borderRadius", "_autoMargin", "_bgcolor", "_bgimage", "_stopDraw"];
+            for (let i in PROTECTED_PROPERTIES) {
+                Object.defineProperty(this, PROTECTED_PROPERTIES[i], {enumerable: false, configurable: true, writable: true});
+            }
+            Object.defineProperty(this.__proto__, "show", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this.__proto__, "clear", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this.__proto__, "update", {enumerable: false, configurable: true, writable: true});
+
             this._div = document.createElement('div');
             MessageLayer.div.appendChild(this._div);
             MessageLayer.TextAreas.push(this);
@@ -325,9 +488,6 @@ Engine = new function(){
             this._font = EngineUser.Default.TextAreaFont;
                         // 查阅text-shadow(阴影)和-webkit-text-stroke(描边)相关资料
 
-            // 阻止修改font属性(但可以修改其值)
-            Object.seal(this._font);
-
             this._color = EngineUser.Default.TextAreaColor;
             this._top = EngineUser.Default.TextAreaTop;
             this._left = EngineUser.Default.TextAreaLeft;
@@ -338,7 +498,6 @@ Engine = new function(){
             // 删除某个位置设定即设置为"" eg: this.top = "";
 
             this._border = EngineUser.Default.TextAreaBorder;
-            Object.seal(this._border);
             this._borderRadius = EngineUser.Default.TextAreaBorderRadius;
 
 
@@ -357,64 +516,83 @@ Engine = new function(){
             this.hoverBgColor = EngineUser.Default.TextAreaBgColor;
             this.hoverBgImage = EngineUser.Default.TextAreaBgImage;
 
+            // 阻止修改font属性(但可以修改其值)
+            Object.seal(this._font);
+            Object.seal(this._border);
+
             Object.defineProperties(this, {
                 div: {
+                    enumerable: false,                  // 在for..in的时候不会遍历
                     get: function() {return this._div;},
                     set: function(v) {this._div = v; this.update();}
                 },
                 text: {
+                    enumerable: true,
                     get: function() {return this._text;},
                     set: function(v) {this._text = v; this.show();}
                 },
                 font: {
+                    enumerable: true,
                     get: function() {return this._font;},
                     set: function(v) {this._font = v; this.update();}
                 },
                 color: {
+                    enumerable: true,
                     get: function() {return this._color;},
                     set: function(v) {this._color = v; this.update();}
                 },
                 top: {
+                    enumerable: true,
                     get: function() {return this._top;},
                     set: function(v) {this._top = v; this.update();}
                 },
                 left: {
+                    enumerable: true,
                     get: function() {return this._left;},
                     set: function(v) {this._left = v; this.update();}
                 },
                 right: {
+                    enumerable: true,
                     get: function() {return this._right;},
                     set: function(v) {this._right = v; this.update();}
                 },
                 bottom: {
+                    enumerable: true,
                     get: function() {return this._bottom;},
                     set: function(v) {this._bottom = v; this.update();}
                 },
                 width: {
+                    enumerable: true,
                     get: function() {return this._width;},
                     set: function(v) {this._width = v; this.update();}
                 },
                 height: {
+                    enumerable: true,
                     get: function() {return this._height;},
                     set: function(v) {this._height = v; this.update();}
                 },
                 border: {
+                    enumerable: true,
                     get: function() {return this._border;},
                     set: function(v) {this._border = v; this.update();}
                 },
                 borderRadius: {
+                    enumerable: true,
                     get: function() {return this._borderRadius;},
                     set: function(v) {this._borderRadius = v; this.update();}
                 },
                 autoMargin: {
+                    enumerable: true,
                     get: function() {return this._autoMargin;},
                     set: function(v) {this._autoMargin = v; this.update();}
                 },
                 bgcolor: {
+                    enumerable: true,
                     get: function() {return this._bgcolor;},
                     set: function(v) {this._bgcolor = v; this.update();}
                 },
                 stopDraw: {
+                    enumerable: false,                  // 在 for..in的时候不会遍历
                     get: function() {return this._stopDraw;},
                     set: function(v) {
                         if (v) {
@@ -426,6 +604,7 @@ Engine = new function(){
                     }
                 },
                 bgimage: {
+                    enumerable: true,
                     get: function() {return this._bgimage;},
                     set: function(v) {
                         if (typeof v == "string" && v.search(/url\(.*\)/i) == -1) {
@@ -503,7 +682,6 @@ Engine = new function(){
 
             this.stopDraw = true;
             let stopInt = this._stopDraw.push(false) - 1;
-            //console.log(stopInt);
 
             var that = this;
             var count = 0;
@@ -522,6 +700,11 @@ Engine = new function(){
                     return;
                 }else{
                     if (count == cpyText.length) {
+                        let newArr = [];
+                        for (let i in that._stopDraw) {
+                            if (parseInt(i) != stopInt) newArr[i] = that._stopDraw[i];
+                        }
+                        that._stopDraw = newArr;
                         if (typeof callable == "function") callable();
                         return;
                     }
@@ -541,13 +724,34 @@ Engine = new function(){
             Object.seal(this._font);
             this.text = EngineUser.Default.TextAreaText;         // 自动update
         };
-
+        Object.defineProperty(this, "PictureLayer", {enumerable: false, configurable: true, writable: true});   // 防止PictureLayer属性被遍历
         this.PictureLayer = function() {
             Engine.Draw.PictureLayers.push(this);
 
+            const PROTECTED_PROPERTIES = ["_alpha", "image", "canvas", "context"];
+            for (let i in PROTECTED_PROPERTIES) {
+                Object.defineProperty(this, PROTECTED_PROPERTIES[i], {enumerable: false, configurable: true, writable: true});
+            }
+            
+            Object.defineProperty(this.__proto__, "update", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this.__proto__, "clear", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this.__proto__, "show", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this.__proto__, "disappear", {enumerable: false, configurable: true, writable: true});
+            Object.defineProperty(this, "alpha", {
+                enumerable: true,
+                set: function(v) {
+                    if (v > 1) v = 1;
+                    if (v < 0) v = 0;
+                    this._alpha = v;
+                },
+                get: function(v) {
+                    return this._alpha;
+                }
+            });
+
             // 每个图像一层canvas
             this.src = EngineUser.Default.PictureLayerSrc;
-            this._image = new Image();
+            this.image = new Image();
 
             this.canvas = document.createElement("canvas");
             this.canvas.height = document.getElementById("canvasContainer").offsetHeight;
@@ -555,10 +759,10 @@ Engine = new function(){
             this.canvas.style.position = "absolute";
             this.canvas.style.zIndex = EngineUser.Default.PictureLayerZIndex;
             document.getElementById("canvasContainer").appendChild(this.canvas);
-            this._context = this.canvas.getContext("2d");
+            this.context = this.canvas.getContext("2d");
 
             this.visible = EngineUser.Default.PictureLayerVisible;
-            this.alpha = EngineUser.Default.PictureLayerAlpha;
+            this._alpha = EngineUser.Default.PictureLayerAlpha;
 
             // 对图像进行矩形裁剪
             this.clip = EngineUser.Default.PictureLayerClip;
@@ -588,19 +792,19 @@ Engine = new function(){
         this.PictureLayer.prototype.update = function(){
             // 清空画布
             this.canvas.style.zIndex = this.zIndex;
-            this._context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
             this.canvas.style.opacity = this.alpha;
             if (! this.visible) this.canvas.style.opacity = 0.0;
-            this._image.src = this.src;
-            this._context.drawImage(this._image, 
+            this.image.src = this.src;
+            this.context.drawImage(this.image, 
                 this.clip.enable?this.clip.left:0,
                 this.clip.enable?this.clip.top:0,
-                this.clip.enable?this.clip.width:this._image.width,
-                this.clip.enable?this.clip.height:this._image.height,
+                this.clip.enable?this.clip.width:this.image.width,
+                this.clip.enable?this.clip.height:this.image.height,
                 this.left,
                 this.top,
-                this.width?this.width:this._image.width,
-                this.height?this.height:this._image.height);
+                this.width?this.width:this.image.width,
+                this.height?this.height:this.image.height);
         };
         // 清除画布上的图片和设定的位置,src等参数.
         this.PictureLayer.prototype.clear = function() {
@@ -613,20 +817,26 @@ Engine = new function(){
             this.left = EngineUser.Default.PictureLayerLeft;
             this.src = EngineUser.Default.PictureLayerSrc;
         };
-        this.PictureLayer.prototype.show = function(animation, time, interrupt, callable) {
-            time = time || 0;
+        this.PictureLayer.prototype.show = function(animation, param, interrupt, callable) {
+            time = param.time || 0;
             interrupt = interrupt || true;
 
-            animation(this, time);
+            var newParam = {};
+            for (i in param) newParam[i] = param[i];
+            newParam['Layer'] = this;
+            animation(newParam);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
         };
-        this.PictureLayer.prototype.disappear = function(animation, time, interrupt, callable) {
-            time = time || 0;
+        this.PictureLayer.prototype.disappear = function(animation, param, interrupt, callable) {
+            ime = param.time || 0;
             interrupt = interrupt || true;
 
-            animation(this, time);
+            var newParam = {};
+            for (i in param) newParam[i] = param[i];
+            newParam['Layer'] = this;
+            animation(newParam);
 
             if (!interrupt)
                 Engine.Control.wait(time, callable);
@@ -635,21 +845,14 @@ Engine = new function(){
 
     // 暂时4种动画效果
     this.Animation = {
-        fideInLeft: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "left", distance);},
-        fideInRight: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "right", distance);},
-        fideInUp: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "up", distance);},
-        fideInDown: function(Layer, time, distance){Engine.Animation.fideIn(Layer, time, "down", distance);},
-        fideOutLeft: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "left", distance);},
-        fideOutRight: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "right", distance);},
-        fideOutUp: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "up", distance);},
-        fideOutDown: function(Layer, time, distance){Engine.Animation.fideOut(Layer, time, "down", distance);},
         // Layer必须要有left,top,alpha属性
-        fideIn: function(Layer, time, direction, distance){
+        fideIn: function(obj){
+            var Layer = obj.Layer;
+            var time = obj.time;
+            var direction = obj.direction || "left";
+            var distance = obj.distance || EngineUser.Default.AnimationFideInDistance;  // 动画路径长度
             var steps =  EngineUser.Default.AnimationFideInSteps;   // 动画的补间个数
-            direction = direction || "left";
-            distance = distance || EngineUser.Default.AnimationFideInDistance;              // 动画路径长度
             var i = 0;
-            var tmpAlpha = Layer.alpha;
             Layer.alpha = 0.0;
             Layer.visible = true;
             switch(direction.toLowerCase()){
@@ -659,7 +862,7 @@ Engine = new function(){
                         left = left - distance;
                         Layer.div.style.left = left + "px";
                         var inter = setInterval(function(){
-                            Layer._alpha = Layer.div.style.opacity = Layer._alpha + parseFloat(tmpAlpha/steps);
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha + parseFloat(1/steps);
                             Layer.div.style.left = left+distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -667,7 +870,7 @@ Engine = new function(){
                     }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
                         var tmpRight = Layer.right = Layer.right + distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.right = tmpRight-distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -675,7 +878,7 @@ Engine = new function(){
                     }else{                                                          // 通过left控制位置
                         var tmpLeft = Layer.left = Layer.left - distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.left = tmpLeft+distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -688,7 +891,7 @@ Engine = new function(){
                         left = left + distance;
                         Layer.div.style.left = left + "px";
                         var inter = setInterval(function(){
-                            Layer._alpha = Layer.div.style.opacity = Layer._alpha + parseFloat(tmpAlpha/steps);
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha + parseFloat(1/steps);
                             Layer.div.style.left = left-distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -696,7 +899,7 @@ Engine = new function(){
                     }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
                         var tmpRight = Layer.right = Layer.right - distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.right = tmpRight+distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -704,7 +907,7 @@ Engine = new function(){
                     }else{                                                          // 通过left控制位置
                         var tmpLeft = Layer.left = Layer.left + distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.left = tmpLeft-distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -715,7 +918,7 @@ Engine = new function(){
                     if (Layer.top === undefined || Layer.top === "") {
                         var tmpBottom = Layer.bottom = Layer.bottom + distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.bottom = tmpBottom-distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -723,7 +926,7 @@ Engine = new function(){
                     }else{
                         var tmpTop = Layer.top = Layer.top - distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.top = tmpTop+distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -734,7 +937,7 @@ Engine = new function(){
                     if (Layer.top === undefined || Layer.top === "") {
                         var tmpBottom = Layer.bottom = Layer.bottom - distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.bottom = tmpBottom+distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -742,7 +945,7 @@ Engine = new function(){
                     }else{
                         var tmpTop = Layer.top = Layer.top + distance;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha + parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha + parseFloat(1/steps);
                             Layer.top = tmpTop-distance/steps*i;
                             i++;
                             if (i>=steps) clearInterval(inter);
@@ -753,18 +956,19 @@ Engine = new function(){
                     throw new Error("Error direction input: "+direction);
             }
         },
-        fideOut: function(Layer, time, direction, distance){
+        fideOut: function(obj){
             var steps =  EngineUser.Default.AnimationFideInSteps;   // 动画的补间个数
-            direction = direction || "left";
-            distance = distance || EngineUser.Default.AnimationFideInDistance;              // 动画路径长度
+            var Layer = obj.Layer;
+            var time = obj.time;
+            var direction = obj.direction || "left";
+            var distance = obj.distance || EngineUser.Default.AnimationFideInDistance;  // 动画路径长度
             var i = 0;
-            var tmpAlpha = Layer.alpha;
             switch(direction.toLowerCase()){
                 case "left":
                     if (Layer.autoMargin) {                                         // 通过autoMargin控制位置, 一定是 MessageLayer
                         var left = parseInt(Layer.div.style.left.slice(0, -2));
                         var inter = setInterval(function(){
-                            Layer._alpha = Layer.div.style.opacity = Layer._alpha - parseFloat(tmpAlpha/steps);
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha - parseFloat(1/steps);
                             Layer.div.style.left = left-distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
                             i++;
                             if (i>=steps) {
@@ -775,7 +979,7 @@ Engine = new function(){
                     }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
                         var tmpRight = Layer.right;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.right = tmpRight+distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -786,7 +990,7 @@ Engine = new function(){
                     }else{                                                          // 通过left控制位置
                         var tmpLeft = Layer.left;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.left = tmpLeft-distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -800,7 +1004,7 @@ Engine = new function(){
                     if (Layer.autoMargin) {                                         // 通过autoMargin控制位置, 一定是 MessageLayer
                         var left = parseInt(Layer.div.style.left.slice(0, -2));
                         var inter = setInterval(function(){
-                            Layer._alpha = Layer.div.style.opacity = Layer._alpha - parseFloat(tmpAlpha/steps);
+                            Layer._alpha = Layer.div.style.opacity = Layer._alpha - parseFloat(1/steps);
                             Layer.div.style.left = left+distance/steps*i;                    // 每次更新避免 update(), 防止autoMargin的干扰
                             i++;
                             if (i>=steps) {
@@ -811,7 +1015,7 @@ Engine = new function(){
                     }else if (Layer.left === undefined || Layer.left === "") {      // 通过right控制左右位置
                         var tmpRight = Layer.right;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.right = tmpRight+distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -822,7 +1026,7 @@ Engine = new function(){
                     }else{                                                          // 通过left控制位置
                         var tmpLeft = Layer.left;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.left = tmpLeft+distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -836,7 +1040,7 @@ Engine = new function(){
                     if (Layer.top === undefined || Layer.top === "") {
                         var tmpBottom = Layer.bottom;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.bottom = tmpBottom-distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -847,7 +1051,7 @@ Engine = new function(){
                     }else{
                         var tmpTop = Layer.top;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.top = tmpTop+distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -861,7 +1065,7 @@ Engine = new function(){
                     if (Layer.top === undefined || Layer.top === "") {
                         var tmpBottom = Layer.bottom;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.bottom = tmpBottom+distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -872,7 +1076,7 @@ Engine = new function(){
                     }else{
                         var tmpTop = Layer.top;
                         var inter = setInterval(function(){
-                            Layer.alpha = Layer.alpha - parseFloat(tmpAlpha/steps);
+                            Layer.alpha = Layer.alpha - parseFloat(1/steps);
                             Layer.top = tmpTop-distance/steps*i;
                             i++;
                             if (i>=steps) {
@@ -886,10 +1090,12 @@ Engine = new function(){
                     throw new Error("Error direction input: "+direction);
             }
         },
-        hide: function(Layer){
+        hide: function(obj){
+            var Layer = obj.Layer;
             Layer.visible = false;
         },
-        show: function(Layer){
+        show: function(obj){
+            var Layer = obj.Layer;
             Layer.visible = true;
         }
     };
@@ -961,41 +1167,161 @@ Engine = new function(){
 
         /*
          * saveMainfest 存储: 
-         [
-            {
-                title: "12月11日 剧情文字等等等",
-                saveTime: "1484908068203"            // <------时间戳
-                saveFile: "./save/sav1.json",
-                thumbFile: "./save/sav1.thumb"       // <------缩略图片
+        {
+            "1":{
+                "title": "12月11日 剧情文字等等等",
+                "saveTime": 1484908068203,            // <------时间戳
+                "saveFile": "./save/1.json",
+                "thumbFile": "./save/1.thumb"       // <------缩略图片
             },
-            {
-                title: "12月28日 剧情文字等等等",
-                saveTime: "1484908130215"            // <------时间戳
-                saveFile: "./save/sav2.json",
-                thumbFile: "./save/sav2.thumb"       // <------缩略图片
+            "3":{
+                "title": "12月28日 剧情文字等等等",
+                "saveTime": 1484908130215,            // <------时间戳
+                "saveFile": "./save/2.json",
+                "thumbFile": "./save/2.thumb"       // <------缩略图片
             }
-        ]
+        }
          */
         this.listSaves = function() {
             if (EngineObject.existsFile(EngineUser.Config.saveMainfest)) {
                 var mainfest = EngineObject.readFile(EngineUser.Config.saveMainfest);
                 return JSON.parse(mainfest);
             }else{
-                EngineObject.writeFile(EngineUser.Config.saveMainfest, "[]");
-                return [];
+                EngineObject.writeFile(EngineUser.Config.saveMainfest, "{}");
+                return {};
             }
         };
         // save 和 load 的时候还需要保存和载入Layers的状态
         /*
          * 档save结构:
-         
+        {
+            "local":                      // Engine.Vars.Local
+                {
+                    "var1": 
+                        {
+                            "value": "STRUCTED DATA",
+                            "type": "string"          // type: string, number, boolean, object, null, undefined
+                        },
+                    "var2":
+                        {
+                            "value": 5,
+                            "type": "number"
+                        }
+                    "var3": 
+                        {
+                            "value": 
+                                {
+                                    "key": data;
+                                },
+                            "type": "object"
+                        },
+                    "var4": 
+                        {
+                            "value": "function (){}",
+                            "type": "function"
+                        }
+                },
+            "draw":
+                {
+                    "MessageLayers":
+                        {
+                            //......
+                        }
+                    "PictureLayers":
+                        {
+                            //......
+                        }
+                },
+            "players":
+                [
+                // ...
+                ],
+            "pc": 5
+        }
          */
-        this.save = function(id) {
-            if (this.listSaves()[id] == undefined) {return false;}
+        this.save = function(id, title) {
+            var data = {};
+            data['local'] = serialize(Engine.Vars.Local);
+            data['draw'] = serialize(Engine.Draw);
+            data['pc'] = Engine.Proc.pc;
+            data['players'] = serialize(Engine.Audio.Players);
+            var mainfest = this.listSaves();
+            mainfest[id] = {
+                title: title,
+                saveTime: new Date().getTime(),            // <------时间戳
+                saveFile: EngineUser.Config.savePath+id+".json",
+                thumbFile: EngineUser.Config.savePath+id+".thumb"       // <------缩略图片
+            };
+            EngineObject.writeFile(EngineUser.Config.saveMainfest, JSON.stringify(mainfest), false);
+            EngineObject.writeFile(mainfest[id]["saveFile"], JSON.stringify(data), false);
+            // EngineObject.writeFile(mainfest[id]["thumbFile"], JSON.stringify(data), false);
+            
 
         };
         this.load = function(id) {
+            var mainfest = this.listSaves();
+            if (mainfest[id] == undefined) {throw new Error("Load from illegal data"); return false;}
+            var saveData = JSON.parse(EngineObject.readFile(mainfest[id]["saveFile"]));
+            saveData["local"] = unSerialize(saveData['local']);
+            saveData["draw"] = unSerialize(saveData['draw']);
+            saveData['players'] = unSerialize(saveData['players']);
 
+            Engine.Proc.pc = saveData['pc'];
+
+            for (let i in saveData['local']) {
+                if (Engine.Vars.Local[i] == undefined)
+                    Engine.Vars.assignLocal(i);
+                Engine.Vars.Local[i] = saveData['local'][i];
+            }
+
+            // 在载入的时候清除所有Players
+            for (let i in Engine.Audio.Players) {
+                Engine.Audio.Players[i].pause();
+                Engine.Audio.Players[i].audioDOM.parentNode.removeChild(Engine.Audio.Players[i].audioDOM);
+                delete Engine.Audio.Players[i];
+            }
+            Engine.Audio.Players = [];
+
+            for (let i in saveData['players']) {
+                player = new Engine.Audio.Player();
+                for (let j in saveData['players'][i]) {
+                    player[j] = saveData['players'][i][j];
+                }
+            }
+
+            // 在载入的时候清除所有MessageLayers和PictureLayers
+            for (let i in Engine.Draw.MessageLayers) {
+                Engine.Draw.MessageLayers[i]._div.parentNode.removeChild(Engine.Draw.MessageLayers[i]._div);
+                delete Engine.Draw.MessageLayers[i];
+            }
+            for (let i in Engine.Draw.PictureLayers) {
+                Engine.Draw.PictureLayers[i].canvas.parentNode.removeChild(Engine.Draw.PictureLayers[i].canvas);
+                delete Engine.Draw.PictureLayers[i];
+            }
+            Engine.Draw.MessageLayers = [];
+            Engine.Draw.PictureLayers = [];
+
+            for (let i in saveData['draw']['MessageLayers']) {
+                msgLayer = new Engine.Draw.MessageLayer();
+                for (let j in saveData['draw']['MessageLayers'][i]) {
+                    if (j != "TextAreas")
+                        msgLayer[j] = saveData['draw']['MessageLayers'][i][j];
+                    else{
+                        for (let k in saveData['draw']['MessageLayers'][i]['TextAreas']) {
+                            txtArea = new Engine.Draw.TextArea(msgLayer);
+                            for (let l in saveData['draw']['MessageLayers'][i]['TextAreas'][k]) {
+                                txtArea[l] = saveData['draw']['MessageLayers'][i]['TextAreas'][k][l];
+                            }
+                        }
+                    }
+                }
+            }
+            for (let i in saveData['draw']['PictureLayers']) {
+                picLayer = new Engine.Draw.PictureLayer();
+                for (let j in saveData['draw']['PictureLayers'][i]) {
+                    picLayer[j] = saveData['draw']['PictureLayers'][i][j];
+                }
+            }
         };
 
         this.waitQueue = 0;
@@ -1066,12 +1392,17 @@ Engine = new function(){
         this.Player = function() {
             var that = this;
             Engine.Audio.Players.push(this);
+            Object.defineProperty(this, "audioDOM", {enumerable:false, configurable:true, writable:true});
+            Object.defineProperty(this.__proto__, "play", {enumerable:false, configurable:true, writable:true});
+            Object.defineProperty(this.__proto__, "pause", {enumerable:false, configurable:true, writable:true});
+            Object.defineProperty(this.__proto__, "switch", {enumerable:false, configurable:true, writable:true});
             this.audioDOM =  document.createElement('audio');
             document.getElementById("audioContainer").appendChild(this.audioDOM);
             this.audioDOM.addEventListener("ended", function(){that.callback();});
 
             Object.defineProperties(this, {
                 src: {
+                    enumerable: true,
                     get: function() {return this.audioDOM.src;},
                     set: function(v) {
                         // 设置audio的src, 播放会中断
@@ -1079,6 +1410,7 @@ Engine = new function(){
                     }
                 },
                 loop: {
+                    enumerable: true,
                     get: function() {return this.audioDOM.loop;},
                     set: function(v) {
                         // 设置audio的loop, 播放不会中断
@@ -1086,6 +1418,7 @@ Engine = new function(){
                     }
                 },
                 muted: {
+                    enumerable: true,
                     get: function() {return this.audioDOM.muted;},
                     set: function(v) {
                         // 设置是否静音, 通常是和角色语音设置有关
@@ -1093,6 +1426,7 @@ Engine = new function(){
                     }
                 },
                 volume: {
+                    enumerable: true,
                     get: function() {return this.audioDOM.volume;},
                     set: function(v) {
                         // 设置音量
@@ -1129,15 +1463,12 @@ Engine = new function(){
                 }
             }, time / (2 * step));
         }
-
-
     }
 }
 
 window.onload = function() {
     Engine.init();
     window.M = new Engine.Draw.MessageLayer();
-    N = new Engine.Draw.TextArea(M);
     window.O = new Engine.Draw.TextArea(M);
     M.visible = true;
     //M.bgcolor = "rgba(102, 204, 255, 0.5)";
@@ -1166,12 +1497,12 @@ window.onload = function() {
 
     document.onclick = function(e) {
         if (e.button == 0 && Engine.Control.lClickEnabled) {
-            if (O.text == O.strShown) {
-                Engine.Control.wait(100);
+            if (Engine.Draw.MessageLayers[0].TextAreas[0].text == Engine.Draw.MessageLayers[0].TextAreas[0].strShown) {
+                //Engine.Control.wait(Engine.Setting.readTxtSpd + 10 + Engine.Setting.noReadTxtSpd);
                 Engine.Proc.next();
             }else{
-                Engine.Control.wait(20);
-                O.stopDraw = true;
+                //Engine.Control.wait(Math.max(Engine.Setting.readTxtSpd, Engine.Setting.noReadTxtSpd)+10);
+                Engine.Draw.MessageLayers[0].TextAreas[0].stopDraw = true;
             }
         }
     };
