@@ -1,15 +1,14 @@
 // 程序系统运行配置
-EngineUser.Config = {
+var Config = {
     settingPath: "./config.json",   // Engine.Setting中系统设置存储的目录
     savePath: "./save/",            // 存档目录
     saveMainfest: "./save/mainfest.json",  // 存档的清单(包含几个存档,存档的文件名等)
     canvasRefresh: 16,              // 每?ms刷新canvas
     globalSavePath: "./save/global.json",   // 全局变量的存储地址
-
 };
 
 // 默认值设定
-EngineUser.Default = {
+var Default = {
     SettingBgmVolumn: 1,
     SettingSpkVolumn: 1,
     SettingEffVolumn: 1,
@@ -87,3 +86,8 @@ EngineUser.Default = {
     AudioSwitchTime: 2000,   // 音频切换过渡时间
     AudioSwitchStep: 50,
 }
+
+export {
+    Config,
+    Default
+};
