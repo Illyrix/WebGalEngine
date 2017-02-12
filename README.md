@@ -1,4 +1,3 @@
-# WebGalEngine
 A Gal Engine based on CEF.
 
 ## Document
@@ -111,7 +110,7 @@ A Gal Engine based on CEF.
       存储 label 对应的场景下标:  
       `{"Label1":5, "Label4":88}`
     > Engine.Proc.labels 和 Engine.Proc.scenarios 均在 Engine.Proc.init() 中被初始化
-    
+
       * ##### Engine.Proc.read
         记录场景是否已读的信息:  
         `[true, , , , true, true]`  
