@@ -41,10 +41,11 @@ const PictureLayer = class PicLayer {
         this.left = window.EngineUser.Default.PictureLayerLeft;
         // 画布永远是分辨率的长宽,充满整个屏幕, top,left这些属性设置的是图片填充的位置
         
-        this.updates = [];          // 在 update 需要调用的回调 (property: function...)
+        this.updates = {};          // 在 update 需要调用的回调 (property: function...)
 
         Object.defineProperty(this, 'self', {enumerable: false, configurable: true, writable: true});
-        this.self =  new Proxy(this, {
+        this.self = this;
+        let proxy = new Proxy(this, {
             get: function (target, key) {
                 if (key[0] !== undefined && key[0] == "_") {
                     return target[key.slice(1)];
@@ -70,48 +71,50 @@ const PictureLayer = class PicLayer {
                 return true;
             }
         });
-        window.Engine.Draw.PictureLayers.push(this.self);
-        return this.self;
+        window.Engine.Draw.PictureLayers.push(proxy);
+        return proxy;
     }
 
     // 一般来说会根据canvas的渲染频率(60Hz)进行update
     // 所以不需要 setter 和 getter(在更新之后下一帧的时候就会把更新后的渲染)
     update () {
         // 清空画布
-        this.canvas.style.zIndex = this.zIndex;
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.canvas.style.opacity = this.alpha;
-        if (! this.visible) this.canvas.style.opacity = 0.0;
-        this.image.src = this.src;
-        this.context.drawImage(this.image, 
-            this.clip.enable?this.clip.left:0,
-            this.clip.enable?this.clip.top:0,
-            this.clip.enable?this.clip.width:this.image.width,
-            this.clip.enable?this.clip.height:this.image.height,
-            this.left,
-            this.top,
-            this.width?this.width:this.image.width,
-            this.height?this.height:this.image.height);
-        for (let i in this.updates) {
-            this.updates[i].call(this);
+        let self = this.self || this;
+        self.canvas.style.zIndex = self.zIndex;
+        self.context.clearRect(0, 0, self.canvas.width, self.canvas.height);
+        self.canvas.style.opacity = self.alpha;
+        if (! self.visible) self.canvas.style.opacity = 0.0;
+        self.image.src = self.src;
+        self.context.drawImage(self.image, 
+            self.clip.enable?self.clip.left:0,
+            self.clip.enable?self.clip.top:0,
+            self.clip.enable?self.clip.width:self.image.width,
+            self.clip.enable?self.clip.height:self.image.height,
+            self.left,
+            self.top,
+            self.width?self.width:self.image.width,
+            self.height?self.height:self.image.height);
+        for (let i in self.updates) {
+            self.updates[i].call(this);
         }
     }
 
     // 清除画布上的图片和设定的位置,src等参数.
     clear () {
-        this.clip = Object.assign({}, EngineUser.Default.PictureLayerClip);
-        Object.seal(this.clip);
-        this.width = EngineUser.Default.PictureLayerWidth;
-        this.height = EngineUser.Default.PictureLayerHeight;
-        this.zIndex = EngineUser.Default.PictureLayerZIndex;
-        this.top = EngineUser.Default.PictureLayerTop;
-        this.left = EngineUser.Default.PictureLayerLeft;
-        this.src = EngineUser.Default.PictureLayerSrc;
+        let self = this.self || this;
+        self.clip = Object.assign({}, EngineUser.Default.PictureLayerClip);
+        Object.seal(self.clip);
+        self.width = EngineUser.Default.PictureLayerWidth;
+        self.height = EngineUser.Default.PictureLayerHeight;
+        self.zIndex = EngineUser.Default.PictureLayerZIndex;
+        self.top = EngineUser.Default.PictureLayerTop;
+        self.left = EngineUser.Default.PictureLayerLeft;
+        self.src = EngineUser.Default.PictureLayerSrc;
     }
 
     anime (animation, param, interrupt = true, callable) {
         let time = param.time || 0;
-        let newParam = {Layer: this.self};
+        let newParam = {Layer: this};
         Object.assign(newParam, param);
         animation(newParam);
 
@@ -122,12 +125,13 @@ const PictureLayer = class PicLayer {
     // 扩展此对象
     // 属性名, 值, update的回调
     extend (prop, value, update) {
-        if (prop in this) {
-            this[prop] = value;
+        let self = this.self || this;
+        if (prop in self) {
+            self[prop] = value;
         } else {
-            Object.defineProperty(this, prop, {enumerable: true, configurable: true, writable: true})
-            this[prop] = value;
-            this.updates[prop] = update;
+            Object.defineProperty(self, prop, {enumerable: true, configurable: true, writable: true})
+            self[prop] = value;
+            self.updates[prop] = update;
         }
     }
 }
