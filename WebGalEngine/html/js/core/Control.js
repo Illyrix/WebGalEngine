@@ -96,9 +96,9 @@ class Control {
     }
 
     load (id) {
-        var mainfest = this.listSaves();
+        let mainfest = this.listSaves();
         if (mainfest[id] == undefined) {throw new Error("Load from illegal data"); return false;}
-        var saveData = JSON.parse(EngineObject.readFile(mainfest[id]["saveFile"]));
+        let saveData = JSON.parse(EngineObject.readFile(mainfest[id]["saveFile"]));
         saveData["local"] = unserialize(saveData['local']);
         saveData["draw"] = unserialize(saveData['draw']);
         saveData['players'] = unserialize(saveData['players']);
@@ -120,7 +120,7 @@ class Control {
         window.Engine.Audio.Players = [];
 
         for (let i in saveData['players']) {
-            player = new window.Engine.Audio.Player();
+            let player = new window.Engine.Audio.Player();
             for (let j in saveData['players'][i]) {
                 player[j] = saveData['players'][i][j];
             }
@@ -139,13 +139,13 @@ class Control {
         window.Engine.Draw.PictureLayers = [];
 
         for (let i in saveData['draw']['MessageLayers']) {
-            msgLayer = new Engine.Draw.MessageLayer();
+            let msgLayer = new Engine.Draw.MessageLayer();
             for (let j in saveData['draw']['MessageLayers'][i]) {
                 if (j != "TextAreas")
                     msgLayer[j] = saveData['draw']['MessageLayers'][i][j];
                 else{
                     for (let k in saveData['draw']['MessageLayers'][i]['TextAreas']) {
-                        txtArea = new Engine.Draw.TextArea(msgLayer);
+                        let txtArea = new Engine.Draw.TextArea(msgLayer);
                         for (let l in saveData['draw']['MessageLayers'][i]['TextAreas'][k]) {
                             txtArea[l] = saveData['draw']['MessageLayers'][i]['TextAreas'][k][l];
                         }
@@ -154,7 +154,7 @@ class Control {
             }
         }
         for (let i in saveData['draw']['PictureLayers']) {
-            picLayer = new Engine.Draw.PictureLayer();
+            let picLayer = new Engine.Draw.PictureLayer();
             for (let j in saveData['draw']['PictureLayers'][i]) {
                 picLayer[j] = saveData['draw']['PictureLayers'][i][j];
             }
@@ -178,7 +178,7 @@ class Control {
             if (waitQueue <= 0) {
                 for (let x in NEED_TEMP_ENABLEDS)
                 this[NEED_TEMP_ENABLEDS[x]] = tempEnableds[NEED_TEMP_ENABLEDS[x]];
-                this.waitQueue = 0;
+                waitQueue = 0;
             }
         }, time);
     }

@@ -63,6 +63,8 @@ const MessageLayer = class MsgLayer {
         this.onLClick = window.EngineUser.Default.MessageLayerOnLeftClick;
         this.onRClick = window.EngineUser.Default.MessageLayerOnRightClick;
 
+        this.updates = [];          // 在 update 需要调用的回调 (property: function...)
+
         Object.defineProperty(this, 'self', {enumerable: false, configurable: true, writable: true});
         this.self = new Proxy(this, {
             get: function (target, key) {
@@ -120,6 +122,9 @@ const MessageLayer = class MsgLayer {
             this.div.style.left = margin + "px";
             this.div.style.right = "auto";
         }
+        for (let i in this.updates) {
+            this.updates[i].call(this);
+        }
 
         this.TextAreas.map(i => {i.update();});
     }
@@ -132,6 +137,18 @@ const MessageLayer = class MsgLayer {
 
         if (!interrupt)
             window.Engine.Control.wait(time, callable);
+    }
+
+    // 扩展此对象
+    // 属性名, 值, update的回调
+    extend (prop, value, update) {
+        if (prop in this) {
+            this[prop] = value;
+        } else {
+            Object.defineProperty(this, prop, {enumerable: true, configurable: true, writable: true})
+            this[prop] = value;
+            this.updates[prop] = update;
+        }
     }
 }
 

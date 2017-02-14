@@ -3,8 +3,6 @@ const TextArea = class txtArea {
         let self = this;
 
         Object.defineProperty(this, 'div', {enumerable: false, configurable: true, writable: true});
-        Object.defineProperty(this, 'stopDraw', {enumerable: false, configurable: true, writable: true});
-        
         this.div = document.createElement('div');
         MessageLayer.div.appendChild(this.div);
 
@@ -102,7 +100,10 @@ const TextArea = class txtArea {
 
         // 显示在区域内的字符串.用于动画的中间过程
         this.strShown = "";
+        Object.defineProperty(this, 'stopDraw', {enumerable: false, configurable: true, writable: true});
         this.stopDraw  = [];      // 用于中断绘制动画, 外部只能设置为 true
+
+        this.updates = [];          // 在 update 需要调用的回调 (property: function...)
 
         Object.defineProperty(this, 'self', {enumerable: false, configurable: true, writable: true});
         this.self =  new Proxy(this, {
@@ -139,6 +140,12 @@ const TextArea = class txtArea {
                     }
                 }
                 return true;
+            },
+            deleteProperty: function(target, property) {
+                if (target.updates[property] != undefined) {
+                    Reflect.deleteProperty(target.updates, property);
+                }
+                return Reflect.deleteProperty(target, property);
             }
         });
         MessageLayer.TextAreas.push(this.self);
@@ -174,6 +181,9 @@ const TextArea = class txtArea {
             this.div.style.left = margin + "px";
             this.div.style.right = "auto";
         }
+        for (let i in this.updates) {
+            this.updates[i].call(this);
+        }
     }
 
     show (text = this.text, time = window.Engine.Setting.readTxtSpd, interrupt = true, callable) {
@@ -198,7 +208,7 @@ const TextArea = class txtArea {
                 if (self.stopDraw.length == 0)
                     self.strShown = self.text;
                 self.update();
-                if (typeof callable == "function") callable();                         // callable 在动画被中断的时候执行么?
+                if (typeof callable == "function") callable.call(self.self);                         // callable 在动画被中断的时候执行么?
                 return;
             }else{
                 if (count == cpyText.length) {
@@ -207,7 +217,7 @@ const TextArea = class txtArea {
                         if (parseInt(i) != stopInt) newArr[i] = self.stopDraw[i];
                     }
                     self.stopDraw = newArr;
-                    if (typeof callable == "function") callable();
+                    if (typeof callable == "function") callable.call(self.self);
                     return;
                 }
                 self.strShown = cpyText.slice(0, count+1);
@@ -218,6 +228,18 @@ const TextArea = class txtArea {
                 setTimeout(function(){interval();}, time);
             }
         }())
+    }
+
+    // 扩展此对象
+    // 属性名, 值, update的回调
+    extend (prop, value, update) {
+        if (prop in this) {
+            this[prop] = value;
+        } else {
+            Object.defineProperty(this, prop, {enumerable: true, configurable: true, writable: true})
+            this[prop] = value;
+            this.updates[prop] = update;
+        }
     }
 
     // 此函数将会清除该TextArea上的文字和设定回默认样式(不清除位置设定).

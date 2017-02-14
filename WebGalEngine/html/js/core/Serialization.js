@@ -42,7 +42,7 @@ function unserialize(data) {
             var res = {};
             if (data["data"] == "") return null;
             for (let i in data["data"]) {
-                res[i] = unSerialize(data["data"][i]);
+                res[i] = unserialize(data["data"][i]);
             }
             return res;
             break;

@@ -41,6 +41,8 @@ const PictureLayer = class PicLayer {
         this.left = window.EngineUser.Default.PictureLayerLeft;
         // 画布永远是分辨率的长宽,充满整个屏幕, top,left这些属性设置的是图片填充的位置
         
+        this.updates = [];          // 在 update 需要调用的回调 (property: function...)
+
         Object.defineProperty(this, 'self', {enumerable: false, configurable: true, writable: true});
         this.self =  new Proxy(this, {
             get: function (target, key) {
@@ -90,6 +92,9 @@ const PictureLayer = class PicLayer {
             this.top,
             this.width?this.width:this.image.width,
             this.height?this.height:this.image.height);
+        for (let i in this.updates) {
+            this.updates[i].call(this);
+        }
     }
 
     // 清除画布上的图片和设定的位置,src等参数.
@@ -112,6 +117,18 @@ const PictureLayer = class PicLayer {
 
         if (!interrupt)
             window.Engine.Control.wait(time, callable);
+    }
+
+    // 扩展此对象
+    // 属性名, 值, update的回调
+    extend (prop, value, update) {
+        if (prop in this) {
+            this[prop] = value;
+        } else {
+            Object.defineProperty(this, prop, {enumerable: true, configurable: true, writable: true})
+            this[prop] = value;
+            this.updates[prop] = update;
+        }
     }
 }
 
