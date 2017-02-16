@@ -15,7 +15,7 @@ const TextArea = class txtArea {
             var tFont = self.font; self.font = self.hoverFont;
             var tBorder = self.border; self.border = self.hoverBorder;
             var tBorderRadius = self.borderRadius;
-            self._borderRadius = self.hoverBorderRadius;
+            self.borderRadius = self.hoverBorderRadius;
             var tBgColor = self.bgcolor; self.bgcolor = self.hoverBgColor;
             var tBgImage = self.bgimage; self.bgimage = self.hoverBgImage;
             self.div.onmouseleave = function () {
@@ -128,7 +128,6 @@ const TextArea = class txtArea {
                                 for (let i  in target.stopDraw) {
                                     target.stopDraw[i] = true;
                                 }
-                            console.log(self.stopDraw);
                             target.update();
                         }
                         if (key == 'bgimage') {

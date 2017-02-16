@@ -31,7 +31,7 @@ class Control {
         document.onkeydown = (e) => {
             if (e) {
                 switch (e.keyCode) {
-                    case 13: 
+                    case 13:
                         console.log("enter键被按下");       // 注意长按会反复调用
                         if (self.keyEnterEnabled && typeof self.onKeyEnter == "function")
                             self.onKeyEnter();
@@ -52,14 +52,24 @@ class Control {
             auto: {
                 get: () => auto,
                 set: function(v) {
-                    // auto开启或关闭
+                  if (auto == false && v == true) {
+                    // auto 开启
+                  }
+                  if (auto == true && v == false) {
+                    // auto 关闭
+                  }
                     auto = v;
                 }
             },
             skip: {
                 get: () => skip,
                 set: function(v) {
-                    // skip开启或关闭
+                  if (skip == false && v == true) {
+                    // skip 开启
+                  }
+                  if (skip == true && v == false) {
+                    // skip 关闭
+                  }
                     skip = v;
                 }
             }
@@ -92,7 +102,7 @@ class Control {
         window.EngineObject.writeFile(window.EngineUser.Config.saveMainfest, JSON.stringify(mainfest), false);
         window.EngineObject.writeFile(mainfest[id]["saveFile"], JSON.stringify(data), false);
         // window.EngineObject.writeFile(mainfest[id]["thumbFile"], JSON.stringify(data), false);
-            
+
     }
 
     load (id) {

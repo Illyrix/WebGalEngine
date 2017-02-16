@@ -14,11 +14,13 @@ const MessageLayer = class MsgLayer {
         this.div.style.backgroundRepeat = "no-repeat";
         this.div.style.overflow = "hidden";
         this.div.onmouseenter = () => {
-            let tBgColor = self.bgcolor; self._bgcolor = self.hoverBgColor;
+            let tBgColor = self.bgcolor; self.bgcolor = self.hoverBgColor;
             let tBgImage = self.bgimage; self.bgimage = self.hoverBgImage;
+            self.update();
             self.div.onmouseleave = () => {
-                self._bgcolor = tBgColor;
+                self.bgcolor = tBgColor;
                 self.bgimage = tBgImage;
+                self.update();
             };
         };
         // 只有左右键单击的事件监听, 中键滚轮是全局的
