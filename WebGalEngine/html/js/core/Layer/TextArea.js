@@ -131,7 +131,7 @@ const TextArea = class txtArea {
                             target.update();
                         }
                         if (key == 'bgimage') {
-                            if (typeof value == "string" && value.search(/url\(.*\)/i) == -1)
+                            if (typeof value == "string" && value.toLowerCase().slice(0, 3) == 'url')
                                 target.bgimage = "url(" + value +")";
                             else
                                 target.bgimage = value;

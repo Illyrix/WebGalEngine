@@ -140,7 +140,15 @@ const MessageLayer = class MsgLayer {
         animation(newParam);
 
         if (!interrupt)
-            window.Engine.Control.wait(time, callable);
+            window.Engine.Control.wait(time, () => {
+                if (typeof callable == 'function')
+                    callable.call(this);
+            });
+        else
+            setTimeout(() => {
+                if (typeof callable == 'function')
+                    callable.call(this);
+            }, time);
     }
 
     // 扩展此对象

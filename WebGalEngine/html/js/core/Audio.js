@@ -11,6 +11,18 @@ Audio.Player = class {
         document.getElementById("audioContainer").appendChild(this.audioDOM);
         this.audioDOM.addEventListener("ended", () => {self.callback();});
         Object.defineProperties(this, {
+            playing: {
+                enumerable: false,
+                get: function() {return !this.audioDOM.paused;}
+            },
+            paused: {
+                enumerable: false,
+                get: function() {return this.audioDOM.paused;}
+            },
+            ended: {
+                enumerable: false,
+                get: function() {return this.audioDOM.ended;}
+            },
             src: {
                 enumerable: true,
                 get: function() {return this.audioDOM.src;},
